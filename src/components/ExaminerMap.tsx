@@ -123,8 +123,13 @@ function MapContent({ examiners }: ExaminerMapProps) {
   return (
     <>
       <TileLayer
-        attribution='&copy; <a href="https://www.faa.gov/">FAA</a> VFR Sectional Charts'
-        url="https://tiles.arcgisonline.com/arcgis/rest/services/Specialty/FAA_Sectional_Charts/MapServer/tile/{z}/{y}/{x}"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <TileLayer
+        attribution='&copy; <a href="https://www.openaip.net/">OpenAIP</a>'
+        url="https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=a96a28b4dc214f0b8a0e5e8a16543276"
+        opacity={0.8}
       />
       {examiners.map((examiner, index) => {
         const coords = getCoords(examiner.state, index);
