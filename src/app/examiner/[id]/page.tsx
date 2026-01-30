@@ -398,8 +398,6 @@ function ReviewCard({ gouge, currentUserId, onUpdate }: { gouge: Gouge; currentU
           {/* Footer */}
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
             <div className="text-sm text-gray-500">
-              <span>by {gouge.username}</span>
-              <span className="mx-2">•</span>
               <span>{new Date(gouge.created_at).toLocaleDateString()}</span>
             </div>
 

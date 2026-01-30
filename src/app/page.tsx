@@ -32,7 +32,6 @@ export default function HomePage() {
   const [allExaminers, setAllExaminers] = useState<Examiner[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [showMap, setShowMap] = useState(true);
 
   // Load all examiners on mount for the map
   useEffect(() => {
@@ -107,16 +106,8 @@ export default function HomePage() {
       {/* Map Section */}
       {!hasSearched && allExaminers.length > 0 && (
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">DPE Locations</h2>
-            <button
-              onClick={() => setShowMap(!showMap)}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              {showMap ? 'Hide Map' : 'Show Map'}
-            </button>
-          </div>
-          {showMap && <ExaminerMap examiners={allExaminers} />}
+          <h2 className="text-2xl font-bold mb-4">DPE Locations</h2>
+          <ExaminerMap examiners={allExaminers} />
           <p className="text-sm text-gray-500 mt-2">
             {allExaminers.length} DPE{allExaminers.length !== 1 ? 's' : ''} in database.
             Click a marker to see details.
