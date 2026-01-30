@@ -109,7 +109,6 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold mb-4">DPE Locations</h2>
           <ExaminerMap examiners={allExaminers} />
           <p className="text-sm text-gray-500 mt-2">
-            {allExaminers.length} DPE{allExaminers.length !== 1 ? 's' : ''} in database.
             Click a marker to see details.
           </p>
         </div>
