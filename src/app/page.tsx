@@ -1,8 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const ExaminerMap = dynamic(() => import('@/components/ExaminerMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+      <p className="text-gray-500">Loading map...</p>
+    </div>
+  ),
+});
 
 interface Examiner {
   id: number;
@@ -18,11 +27,20 @@ interface Examiner {
 }
 
 export default function HomePage() {
-  const router = useRouter();
   const [search, setSearch] = useState('');
   const [examiners, setExaminers] = useState<Examiner[]>([]);
+  const [allExaminers, setAllExaminers] = useState<Examiner[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showMap, setShowMap] = useState(true);
+
+  // Load all examiners on mount for the map
+  useEffect(() => {
+    fetch('/api/examiners')
+      .then((res) => res.json())
+      .then((data) => setAllExaminers(data))
+      .catch(console.error);
+  }, []);
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -86,6 +104,26 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Map Section */}
+      {!hasSearched && allExaminers.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">DPE Locations</h2>
+            <button
+              onClick={() => setShowMap(!showMap)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              {showMap ? 'Hide Map' : 'Show Map'}
+            </button>
+          </div>
+          {showMap && <ExaminerMap examiners={allExaminers} />}
+          <p className="text-sm text-gray-500 mt-2">
+            {allExaminers.length} DPE{allExaminers.length !== 1 ? 's' : ''} in database.
+            Click a marker to see details.
+          </p>
+        </div>
+      )}
+
       {/* Results Section */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {loading ? (
@@ -97,8 +135,14 @@ export default function HomePage() {
               Be the first to add this DPE
             </Link>
           </div>
-        ) : (
+        ) : hasSearched ? (
           <div className="space-y-4">
+            <button
+              onClick={() => { setHasSearched(false); setExaminers([]); setSearch(''); }}
+              className="text-sm text-gray-500 hover:text-gray-700 mb-4"
+            >
+              &larr; Back to map
+            </button>
             {examiners.map((examiner) => (
               <Link
                 key={examiner.id}
@@ -154,17 +198,17 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
-        )}
+        ) : null}
 
         {/* Browse by State */}
         {!hasSearched && (
-          <div className="mt-12">
+          <div className="mt-8">
             <h2 className="text-2xl font-bold mb-4">Browse by State</h2>
             <div className="flex flex-wrap gap-2">
               {['CA', 'TX', 'FL', 'AZ', 'CO', 'WA', 'NY', 'IL', 'GA', 'NC'].map((state) => (
                 <button
                   key={state}
-                  onClick={() => { setSearch(state); handleSearch(); }}
+                  onClick={() => { setSearch(state); setTimeout(() => handleSearch(), 0); }}
                   className="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                 >
                   {state}
