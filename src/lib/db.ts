@@ -85,7 +85,7 @@ export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]
 export async function run(sql: string, params: unknown[] = []) {
   const db = getClient();
   const result = await db.execute({ sql, args: params as any[] });
-  return { lastInsertRowid: result.lastInsertRowid };
+  return { lastInsertRowid: result.lastInsertRowid ? Number(result.lastInsertRowid) : null };
 }
 
 export async function get<T>(sql: string, params: unknown[] = []): Promise<T | undefined> {
