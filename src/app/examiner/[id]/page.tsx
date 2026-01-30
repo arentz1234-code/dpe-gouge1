@@ -32,6 +32,7 @@ interface Examiner {
 
 interface Gouge {
   id: number;
+  user_id: number;
   username: string;
   checkride_type: string;
   checkride_date: string | null;
@@ -227,7 +228,12 @@ export default function ExaminerPage({ params }: { params: Promise<{ id: string 
           </div>
         ) : (
           gouges.map((gouge) => (
-            <ReviewCard key={gouge.id} gouge={gouge} onVote={fetchData} />
+            <ReviewCard
+              key={gouge.id}
+              gouge={gouge}
+              currentUserId={session?.user?.id ? parseInt(session.user.id) : null}
+              onUpdate={fetchData}
+            />
           ))
         )}
       </div>
@@ -235,11 +241,15 @@ export default function ExaminerPage({ params }: { params: Promise<{ id: string 
   );
 }
 
-function ReviewCard({ gouge, onVote }: { gouge: Gouge; onVote: () => void }) {
+function ReviewCard({ gouge, currentUserId, onUpdate }: { gouge: Gouge; currentUserId: number | null; onUpdate: () => void }) {
   const { data: session } = useSession();
   const [thumbsUp, setThumbsUp] = useState(gouge.thumbs_up);
   const [thumbsDown, setThumbsDown] = useState(gouge.thumbs_down);
   const [userVote, setUserVote] = useState(gouge.user_vote);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isAuthor = currentUserId !== null && currentUserId === gouge.user_id;
 
   const handleVote = async (vote: number) => {
     if (!session) {
@@ -262,6 +272,26 @@ function ReviewCard({ gouge, onVote }: { gouge: Gouge; onVote: () => void }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this review? This cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/gouges/${gouge.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        onUpdate();
+      } else {
+        alert('Failed to delete review');
+      }
+    } catch {
+      alert('Failed to delete review');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getRatingClass = (rating: number) => {
     if (rating >= 4) return 'rating-good';
     if (rating >= 2.5) return 'rating-ok';
@@ -273,6 +303,16 @@ function ReviewCard({ gouge, onVote }: { gouge: Gouge; onVote: () => void }) {
     fail: 'bg-red-100 text-red-800',
     discontinue: 'bg-yellow-100 text-yellow-800',
   };
+
+  if (isEditing) {
+    return (
+      <EditReviewForm
+        gouge={gouge}
+        onCancel={() => setIsEditing(false)}
+        onSuccess={() => { setIsEditing(false); onUpdate(); }}
+      />
+    );
+  }
 
   return (
     <div className="card p-6">
@@ -287,17 +327,38 @@ function ReviewCard({ gouge, onVote }: { gouge: Gouge; onVote: () => void }) {
 
         <div className="flex-1">
           {/* Header */}
-          <div className="flex items-center gap-3 mb-2">
-            <span className={`px-2 py-0.5 rounded text-sm font-medium ${outcomeColors[gouge.outcome as keyof typeof outcomeColors]}`}>
-              {gouge.outcome.toUpperCase()}
-            </span>
-            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm">{gouge.checkride_type}</span>
-            <span className="text-sm text-gray-500">
-              Difficulty: <strong>{gouge.difficulty_rating}</strong>
-            </span>
-            <span className="text-sm text-gray-500">
-              {gouge.would_recommend ? '👍 Would recommend' : '👎 Would not recommend'}
-            </span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <span className={`px-2 py-0.5 rounded text-sm font-medium ${outcomeColors[gouge.outcome as keyof typeof outcomeColors]}`}>
+                {gouge.outcome.toUpperCase()}
+              </span>
+              <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm">{gouge.checkride_type}</span>
+              <span className="text-sm text-gray-500">
+                Difficulty: <strong>{gouge.difficulty_rating}</strong>
+              </span>
+              <span className="text-sm text-gray-500">
+                {gouge.would_recommend ? '👍 Would recommend' : '👎 Would not recommend'}
+              </span>
+            </div>
+
+            {/* Edit/Delete buttons for author */}
+            {isAuthor && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Tags */}
@@ -329,7 +390,7 @@ function ReviewCard({ gouge, onVote }: { gouge: Gouge; onVote: () => void }) {
 
           {gouge.tips && (
             <div className="mb-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
-              <strong className="text-sm">💡 Tips:</strong>
+              <strong className="text-sm">Tips:</strong>
               <p className="text-sm text-gray-600 dark:text-gray-400">{gouge.tips}</p>
             </div>
           )}
@@ -360,6 +421,239 @@ function ReviewCard({ gouge, onVote }: { gouge: Gouge; onVote: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function EditReviewForm({ gouge, onCancel, onSuccess }: { gouge: Gouge; onCancel: () => void; onSuccess: () => void }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const [form, setForm] = useState({
+    checkride_type: gouge.checkride_type,
+    checkride_date: gouge.checkride_date || '',
+    outcome: gouge.outcome,
+    quality_rating: gouge.quality_rating,
+    difficulty_rating: gouge.difficulty_rating,
+    would_recommend: gouge.would_recommend,
+    tags: gouge.tags,
+    comment: gouge.comment,
+    oral_topics: gouge.oral_topics || '',
+    flight_maneuvers: gouge.flight_maneuvers || '',
+    tips: gouge.tips || '',
+  });
+
+  const toggleTag = (tag: string) => {
+    setForm(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (form.quality_rating === 0 || form.difficulty_rating === 0) {
+      setError('Please select both quality and difficulty ratings');
+      return;
+    }
+    if (form.comment.length < 20) {
+      setError('Please write at least 20 characters about your experience');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/gouges/${gouge.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+
+      if (res.ok) {
+        onSuccess();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to update');
+      }
+    } catch {
+      setError('Failed to update');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="card p-6 mb-6 border-2 border-blue-200 dark:border-blue-800">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold">Edit Review</h3>
+        <button type="button" onClick={onCancel} className="text-gray-500 hover:text-gray-700">
+          Cancel
+        </button>
+      </div>
+
+      {error && <div className="p-3 mb-4 bg-red-100 text-red-700 rounded">{error}</div>}
+
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-2">Quality *</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setForm({ ...form, quality_rating: n })}
+                className={`w-12 h-12 rounded font-bold text-lg ${
+                  form.quality_rating === n
+                    ? n >= 4 ? 'bg-[#00a67c] text-white' : n >= 2.5 ? 'bg-[#ffbd00] text-black' : 'bg-[#ff6666] text-white'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Difficulty *</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setForm({ ...form, difficulty_rating: n })}
+                className={`w-12 h-12 rounded font-bold text-lg ${
+                  form.difficulty_rating === n
+                    ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-black'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Checkride Type *</label>
+          <select
+            value={form.checkride_type}
+            onChange={(e) => setForm({ ...form, checkride_type: e.target.value })}
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+          >
+            {['PPL', 'IR', 'CPL', 'CFI', 'CFII', 'MEI', 'ATP', 'Sport'].map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Outcome *</label>
+          <select
+            value={form.outcome}
+            onChange={(e) => setForm({ ...form, outcome: e.target.value })}
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+          >
+            <option value="pass">Pass</option>
+            <option value="fail">Fail</option>
+            <option value="discontinue">Discontinue</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Would you recommend?</label>
+          <select
+            value={form.would_recommend ? 'yes' : 'no'}
+            onChange={(e) => setForm({ ...form, would_recommend: e.target.value === 'yes' })}
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+          >
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2">Select Tags (optional)</label>
+        <div className="flex flex-wrap">
+          {DPE_TAGS.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`tag cursor-pointer ${form.tags.includes(tag) ? 'selected' : ''}`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">Your Experience * (min 20 characters)</label>
+        <textarea
+          value={form.comment}
+          onChange={(e) => setForm({ ...form, comment: e.target.value })}
+          rows={4}
+          placeholder="Describe your overall experience with this DPE..."
+          className="w-full p-3 border rounded dark:bg-gray-800 dark:border-gray-700"
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Oral Topics (optional)</label>
+          <textarea
+            value={form.oral_topics}
+            onChange={(e) => setForm({ ...form, oral_topics: e.target.value })}
+            rows={2}
+            placeholder="Topics covered..."
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Flight Maneuvers (optional)</label>
+          <textarea
+            value={form.flight_maneuvers}
+            onChange={(e) => setForm({ ...form, flight_maneuvers: e.target.value })}
+            rows={2}
+            placeholder="Maneuvers performed..."
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Tips (optional)</label>
+          <textarea
+            value={form.tips}
+            onChange={(e) => setForm({ ...form, tips: e.target.value })}
+            rows={2}
+            placeholder="Advice for future applicants..."
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-3 border rounded font-semibold hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex-1 py-3 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
+        >
+          {submitting ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </form>
   );
 }
 
