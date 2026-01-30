@@ -123,8 +123,9 @@ function MapContent({ examiners }: ExaminerMapProps) {
   return (
     <>
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.faa.gov/">FAA</a> VFR Sectional Charts'
+        url="https://wms.chartbundle.com/tms/1.0.0/sec/{z}/{x}/{y}.png?type=google"
+        tms={true}
       />
       {examiners.map((examiner, index) => {
         const coords = getCoords(examiner.state, index);
