@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --border: #e5e5e5;
+  --primary: #00a67c;
+  --primary-dark: #008f6b;
+  --rating-good: #00a67c;
+  --rating-ok: #ffbd00;
+  --rating-bad: #ff6666;
+  --muted: #737373;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #121212;
+    --foreground: #ffffff;
+    --card: #1e1e1e;
+    --border: #333333;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rating-box {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 800;
+  border-radius: 8px;
+}
+
+.rating-good { background: var(--rating-good); color: white; }
+.rating-ok { background: var(--rating-ok); color: #1a1a1a; }
+.rating-bad { background: var(--rating-bad); color: white; }
+
+.tag {
+  display: inline-block;
+  padding: 6px 16px;
+  background: #f0f0f0;
+  border-radius: 20px;
+  font-size: 14px;
+  margin: 4px;
+}
+
+.tag.selected {
+  background: var(--primary);
+  color: white;
+}
