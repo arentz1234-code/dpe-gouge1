@@ -1,12 +1,21 @@
-import { createClient } from '@libsql/client';
+import { createClient, Client } from '@libsql/client';
 
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'file:local.db',
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+let client: Client | null = null;
+
+function getClient(): Client {
+  if (!client) {
+    client = createClient({
+      url: process.env.TURSO_DATABASE_URL || 'file:local.db',
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+  }
+  return client;
+}
 
 export async function initDb() {
-  await client.execute(`
+  const db = getClient();
+
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
@@ -16,7 +25,7 @@ export async function initDb() {
     )
   `);
 
-  await client.execute(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS examiners (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -31,7 +40,7 @@ export async function initDb() {
     )
   `);
 
-  await client.execute(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS gouges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       examiner_id INTEGER NOT NULL REFERENCES examiners(id) ON DELETE CASCADE,
@@ -53,7 +62,7 @@ export async function initDb() {
     )
   `);
 
-  await client.execute(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS votes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       gouge_id INTEGER NOT NULL REFERENCES gouges(id) ON DELETE CASCADE,
@@ -68,16 +77,19 @@ export async function initDb() {
 }
 
 export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
-  const result = await client.execute({ sql, args: params as any[] });
+  const db = getClient();
+  const result = await db.execute({ sql, args: params as any[] });
   return result.rows as T[];
 }
 
 export async function run(sql: string, params: unknown[] = []) {
-  const result = await client.execute({ sql, args: params as any[] });
+  const db = getClient();
+  const result = await db.execute({ sql, args: params as any[] });
   return { lastInsertRowid: result.lastInsertRowid };
 }
 
 export async function get<T>(sql: string, params: unknown[] = []): Promise<T | undefined> {
-  const result = await client.execute({ sql, args: params as any[] });
+  const db = getClient();
+  const result = await db.execute({ sql, args: params as any[] });
   return result.rows[0] as T | undefined;
 }
