@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// State center coordinates for approximate positioning
+// State center coordinates for fallback (examiners without airport coords)
 const STATE_COORDS: Record<string, [number, number]> = {
   AL: [32.806671, -86.791130],
   AK: [61.370716, -152.404419],
@@ -60,8 +60,11 @@ const STATE_COORDS: Record<string, [number, number]> = {
 interface Examiner {
   id: number;
   name: string;
+  airport_id: string | null;
   location: string;
   state: string;
+  lat: number | null;
+  lng: number | null;
   avg_quality: number | null;
   total_gouges: number;
 }
@@ -113,9 +116,13 @@ function MapContent({ examiners }: ExaminerMapProps) {
     });
   };
 
-  // Add slight randomization to prevent overlapping markers in same state
-  const getCoords = (state: string, index: number): [number, number] => {
-    const base = STATE_COORDS[state] || [39.8283, -98.5795];
+  // Get coordinates - use airport coords if available, fallback to state center
+  const getCoords = (examiner: Examiner, index: number): [number, number] => {
+    if (examiner.lat && examiner.lng) {
+      return [examiner.lat, examiner.lng];
+    }
+    // Fallback for examiners without coordinates
+    const base = STATE_COORDS[examiner.state] || [39.8283, -98.5795];
     const offset = (index * 0.1) % 1;
     return [base[0] + offset - 0.5, base[1] + offset - 0.5];
   };
@@ -126,13 +133,8 @@ function MapContent({ examiners }: ExaminerMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openaip.net/">OpenAIP</a>'
-        url="https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=a96a28b4dc214f0b8a0e5e8a16543276"
-        opacity={0.8}
-      />
       {examiners.map((examiner, index) => {
-        const coords = getCoords(examiner.state, index);
+        const coords = getCoords(examiner, index);
         return (
           <Marker
             key={examiner.id}
@@ -144,6 +146,9 @@ function MapContent({ examiners }: ExaminerMapProps) {
                 <a href={`/examiner/${examiner.id}`} className="font-bold text-blue-600 hover:underline">
                   {examiner.name}
                 </a>
+                {examiner.airport_id && (
+                  <p className="font-mono text-[#00a67c]">{examiner.airport_id}</p>
+                )}
                 <p className="text-gray-600">{examiner.location}, {examiner.state}</p>
                 {examiner.avg_quality && (
                   <p className="mt-1">

@@ -40,6 +40,17 @@ export async function initDb() {
     )
   `);
 
+  // Add new columns if they don't exist (for existing databases)
+  try {
+    await db.execute(`ALTER TABLE examiners ADD COLUMN airport_id TEXT`);
+  } catch { /* column may already exist */ }
+  try {
+    await db.execute(`ALTER TABLE examiners ADD COLUMN lat REAL`);
+  } catch { /* column may already exist */ }
+  try {
+    await db.execute(`ALTER TABLE examiners ADD COLUMN lng REAL`);
+  } catch { /* column may already exist */ }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS gouges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

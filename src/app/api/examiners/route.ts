@@ -6,8 +6,11 @@ import { z } from 'zod';
 
 const examinerSchema = z.object({
   name: z.string().min(1),
+  airport_id: z.string().min(3).max(4),
   location: z.string().min(1),
   state: z.string().min(2).max(2),
+  lat: z.number(),
+  lng: z.number(),
   certificates: z.array(z.string()).min(1),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
@@ -17,8 +20,11 @@ const examinerSchema = z.object({
 interface ExaminerRow {
   id: number;
   name: string;
+  airport_id: string | null;
   location: string;
   state: string;
+  lat: number | null;
+  lng: number | null;
   certificates: string;
   phone: string | null;
   email: string | null;
@@ -86,8 +92,11 @@ export async function GET(request: Request) {
         return {
           id: e.id,
           name: e.name,
+          airport_id: e.airport_id,
           location: e.location,
           state: e.state,
+          lat: e.lat,
+          lng: e.lng,
           certificates: JSON.parse(e.certificates),
           avg_quality: e.avg_quality ? Math.round(e.avg_quality * 10) / 10 : null,
           avg_difficulty: e.avg_difficulty ? Math.round(e.avg_difficulty * 10) / 10 : null,
@@ -114,12 +123,15 @@ export async function POST(request: Request) {
     const data = examinerSchema.parse(body);
 
     const result = await run(
-      `INSERT INTO examiners (name, location, state, certificates, phone, email, website, added_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO examiners (name, airport_id, location, state, lat, lng, certificates, phone, email, website, added_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.name,
+        data.airport_id,
         data.location,
         data.state.toUpperCase(),
+        data.lat,
+        data.lng,
         JSON.stringify(data.certificates),
         data.phone || null,
         data.email || null,

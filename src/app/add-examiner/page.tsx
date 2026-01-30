@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AirportAutocomplete from '@/components/AirportAutocomplete';
 
-const STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
-];
+interface Airport {
+  icao: string;
+  name: string;
+  city: string;
+  state: string;
+  lat: number;
+  lng: number;
+}
 
 const CERTIFICATES = ['PPL', 'IR', 'CPL', 'CFI', 'CFII', 'MEI', 'ATP'];
 
@@ -21,10 +23,9 @@ export default function AddExaminerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const [airport, setAirport] = useState<Airport | null>(null);
   const [form, setForm] = useState({
     name: '',
-    location: '',
-    state: '',
     certificates: [] as string[],
     phone: '',
     email: '',
@@ -65,12 +66,24 @@ export default function AddExaminerPage() {
       return;
     }
 
+    if (!airport) {
+      setError('Please select an airport');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/examiners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          airport_id: airport.icao,
+          location: airport.city,
+          state: airport.state,
+          lat: airport.lat,
+          lng: airport.lng,
+        }),
       });
 
       if (res.ok) {
@@ -106,32 +119,13 @@ export default function AddExaminerPage() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">City/Airport *</label>
-            <input
-              type="text"
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              placeholder="San Diego (KSAN)"
-              className="w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">State *</label>
-            <select
-              value={form.state}
-              onChange={(e) => setForm({ ...form, state: e.target.value })}
-              className="w-full p-2 border rounded dark:bg-slate-800 dark:border-slate-600"
-              required
-            >
-              <option value="">Select State</option>
-              {STATES.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Airport *</label>
+          <AirportAutocomplete
+            value={airport}
+            onChange={setAirport}
+            placeholder="Search by airport code, name, or city..."
+          />
         </div>
 
         <div>

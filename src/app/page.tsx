@@ -16,8 +16,11 @@ const ExaminerMap = dynamic(() => import('@/components/ExaminerMap'), {
 interface Examiner {
   id: number;
   name: string;
+  airport_id: string | null;
   location: string;
   state: string;
+  lat: number | null;
+  lng: number | null;
   certificates: string[];
   avg_quality: number | null;
   avg_difficulty: number | null;
@@ -151,6 +154,7 @@ export default function HomePage() {
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{examiner.name}</h2>
                   <p className="text-gray-500">
+                    {examiner.airport_id && <span className="font-mono text-[#00a67c] mr-2">{examiner.airport_id}</span>}
                     {examiner.location}, {examiner.state} • {examiner.certificates.join(', ')}
                   </p>
 
