@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Internal server error', details: errorMessage }, { status: 500 });
   }
 }
