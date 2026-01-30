@@ -18,7 +18,7 @@ export async function POST(
     const userId = parseInt(session.user.id);
     const { vote } = await request.json(); // 1 for thumbs up, -1 for thumbs down, 0 to remove
 
-    const gouge = get<{ id: number; user_id: number }>(
+    const gouge = await get<{ id: number; user_id: number }>(
       'SELECT id, user_id FROM gouges WHERE id = ?',
       [gougeId]
     );
@@ -30,41 +30,41 @@ export async function POST(
       return NextResponse.json({ error: 'Cannot vote on your own review' }, { status: 400 });
     }
 
-    const existingVote = get<{ vote_type: number }>(
+    const existingVote = await get<{ vote_type: number }>(
       'SELECT vote_type FROM votes WHERE gouge_id = ? AND user_id = ?',
       [gougeId, userId]
     );
 
     if (vote === 0) {
       if (existingVote) {
-        run('DELETE FROM votes WHERE gouge_id = ? AND user_id = ?', [gougeId, userId]);
+        await run('DELETE FROM votes WHERE gouge_id = ? AND user_id = ?', [gougeId, userId]);
         if (existingVote.vote_type === 1) {
-          run('UPDATE gouges SET thumbs_up = thumbs_up - 1 WHERE id = ?', [gougeId]);
+          await run('UPDATE gouges SET thumbs_up = thumbs_up - 1 WHERE id = ?', [gougeId]);
         } else {
-          run('UPDATE gouges SET thumbs_down = thumbs_down - 1 WHERE id = ?', [gougeId]);
+          await run('UPDATE gouges SET thumbs_down = thumbs_down - 1 WHERE id = ?', [gougeId]);
         }
       }
     } else if (vote === 1 || vote === -1) {
       if (existingVote) {
         if (existingVote.vote_type !== vote) {
-          run('UPDATE votes SET vote_type = ? WHERE gouge_id = ? AND user_id = ?', [vote, gougeId, userId]);
+          await run('UPDATE votes SET vote_type = ? WHERE gouge_id = ? AND user_id = ?', [vote, gougeId, userId]);
           if (vote === 1) {
-            run('UPDATE gouges SET thumbs_up = thumbs_up + 1, thumbs_down = thumbs_down - 1 WHERE id = ?', [gougeId]);
+            await run('UPDATE gouges SET thumbs_up = thumbs_up + 1, thumbs_down = thumbs_down - 1 WHERE id = ?', [gougeId]);
           } else {
-            run('UPDATE gouges SET thumbs_up = thumbs_up - 1, thumbs_down = thumbs_down + 1 WHERE id = ?', [gougeId]);
+            await run('UPDATE gouges SET thumbs_up = thumbs_up - 1, thumbs_down = thumbs_down + 1 WHERE id = ?', [gougeId]);
           }
         }
       } else {
-        run('INSERT INTO votes (gouge_id, user_id, vote_type) VALUES (?, ?, ?)', [gougeId, userId, vote]);
+        await run('INSERT INTO votes (gouge_id, user_id, vote_type) VALUES (?, ?, ?)', [gougeId, userId, vote]);
         if (vote === 1) {
-          run('UPDATE gouges SET thumbs_up = thumbs_up + 1 WHERE id = ?', [gougeId]);
+          await run('UPDATE gouges SET thumbs_up = thumbs_up + 1 WHERE id = ?', [gougeId]);
         } else {
-          run('UPDATE gouges SET thumbs_down = thumbs_down + 1 WHERE id = ?', [gougeId]);
+          await run('UPDATE gouges SET thumbs_down = thumbs_down + 1 WHERE id = ?', [gougeId]);
         }
       }
     }
 
-    const updated = get<{ thumbs_up: number; thumbs_down: number }>(
+    const updated = await get<{ thumbs_up: number; thumbs_down: number }>(
       'SELECT thumbs_up, thumbs_down FROM gouges WHERE id = ?',
       [gougeId]
     );

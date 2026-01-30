@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const { email, username, password } = registerSchema.parse(body);
 
     // Check if user already exists
-    const existingEmail = query<{ id: number }>(
+    const existingEmail = await query<{ id: number }>(
       'SELECT id FROM users WHERE email = ?',
       [email]
     );
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
     }
 
-    const existingUsername = query<{ id: number }>(
+    const existingUsername = await query<{ id: number }>(
       'SELECT id FROM users WHERE username = ?',
       [username]
     );
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = run(
+    const result = await run(
       'INSERT INTO users (email, username, password) VALUES (?, ?, ?)',
       [email, username, hashedPassword]
     );

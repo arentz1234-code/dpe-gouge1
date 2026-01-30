@@ -34,7 +34,7 @@ export async function GET(
     const { id } = await params;
     const examinerId = parseInt(id);
 
-    const examiner = get<ExaminerRow>(
+    const examiner = await get<ExaminerRow>(
       'SELECT * FROM examiners WHERE id = ?',
       [examinerId]
     );
@@ -43,7 +43,7 @@ export async function GET(
       return NextResponse.json({ error: 'Examiner not found' }, { status: 404 });
     }
 
-    const stats = get<StatsRow>(
+    const stats = await get<StatsRow>(
       `SELECT
         AVG(quality_rating) as avg_quality,
         AVG(difficulty_rating) as avg_difficulty,
@@ -56,7 +56,7 @@ export async function GET(
     );
 
     // Get rating distribution
-    const ratingDist = query<RatingDistRow>(
+    const ratingDist = await query<RatingDistRow>(
       `SELECT quality_rating, COUNT(*) as count
        FROM gouges WHERE examiner_id = ?
        GROUP BY quality_rating ORDER BY quality_rating DESC`,
@@ -64,7 +64,7 @@ export async function GET(
     );
 
     // Get all tags with counts
-    const gougesWithTags = query<{ tags: string }>(
+    const gougesWithTags = await query<{ tags: string }>(
       'SELECT tags FROM gouges WHERE examiner_id = ? AND tags IS NOT NULL',
       [examinerId]
     );

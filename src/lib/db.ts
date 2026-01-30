@@ -1,22 +1,12 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import { createClient } from '@libsql/client';
 
-const dbPath = path.join(process.cwd(), 'dpe-gouge.db');
-let db: Database.Database | null = null;
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL || 'file:local.db',
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
-export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-  }
-  return db;
-}
-
-export function initDb() {
-  const database = getDb();
-
-  database.exec(`
+export async function initDb() {
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
@@ -26,7 +16,7 @@ export function initDb() {
     )
   `);
 
-  database.exec(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS examiners (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -41,14 +31,7 @@ export function initDb() {
     )
   `);
 
-  // Add website column if it doesn't exist (for existing databases)
-  try {
-    database.exec('ALTER TABLE examiners ADD COLUMN website TEXT');
-  } catch {
-    // Column already exists
-  }
-
-  database.exec(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS gouges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       examiner_id INTEGER NOT NULL REFERENCES examiners(id) ON DELETE CASCADE,
@@ -70,7 +53,7 @@ export function initDb() {
     )
   `);
 
-  database.exec(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS votes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       gouge_id INTEGER NOT NULL REFERENCES gouges(id) ON DELETE CASCADE,
@@ -84,20 +67,17 @@ export function initDb() {
   return { success: true };
 }
 
-export function query<T>(sql: string, params: unknown[] = []): T[] {
-  const database = getDb();
-  const stmt = database.prepare(sql);
-  return stmt.all(...params) as T[];
+export async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
+  const result = await client.execute({ sql, args: params as any[] });
+  return result.rows as T[];
 }
 
-export function run(sql: string, params: unknown[] = []) {
-  const database = getDb();
-  const stmt = database.prepare(sql);
-  return stmt.run(...params);
+export async function run(sql: string, params: unknown[] = []) {
+  const result = await client.execute({ sql, args: params as any[] });
+  return { lastInsertRowid: result.lastInsertRowid };
 }
 
-export function get<T>(sql: string, params: unknown[] = []): T | undefined {
-  const database = getDb();
-  const stmt = database.prepare(sql);
-  return stmt.get(...params) as T | undefined;
+export async function get<T>(sql: string, params: unknown[] = []): Promise<T | undefined> {
+  const result = await client.execute({ sql, args: params as any[] });
+  return result.rows[0] as T | undefined;
 }

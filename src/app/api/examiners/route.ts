@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 
     sql += ' GROUP BY e.id ORDER BY total_gouges DESC, e.name ASC';
 
-    const examiners = query<ExaminerRow>(sql, params);
+    const examiners = await query<ExaminerRow>(sql, params);
 
     return NextResponse.json(
       examiners.map(e => {
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const data = examinerSchema.parse(body);
 
-    const result = run(
+    const result = await run(
       `INSERT INTO examiners (name, location, state, certificates, phone, email, website, added_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [

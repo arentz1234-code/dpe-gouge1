@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const users = query<User>(
+        const users = await query<User>(
           'SELECT id, email, username, password FROM users WHERE email = ?',
           [credentials.email]
         );

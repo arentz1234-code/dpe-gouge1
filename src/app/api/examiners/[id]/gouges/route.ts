@@ -58,7 +58,7 @@ export async function GET(
     if (sort === 'highest') orderBy = 'g.quality_rating DESC';
     if (sort === 'lowest') orderBy = 'g.quality_rating ASC';
 
-    const gouges = query<GougeRow>(
+    const gouges = await query<GougeRow>(
       `SELECT g.*, u.username,
         ${userId ? `(SELECT vote_type FROM votes WHERE gouge_id = g.id AND user_id = ${userId}) as user_vote` : 'NULL as user_vote'}
        FROM gouges g
@@ -94,7 +94,7 @@ export async function POST(
     const { id } = await params;
     const examinerId = parseInt(id);
 
-    const examiner = get<{ id: number }>('SELECT id FROM examiners WHERE id = ?', [examinerId]);
+    const examiner = await get<{ id: number }>('SELECT id FROM examiners WHERE id = ?', [examinerId]);
     if (!examiner) {
       return NextResponse.json({ error: 'Examiner not found' }, { status: 404 });
     }
@@ -102,7 +102,7 @@ export async function POST(
     const body = await request.json();
     const data = gougeSchema.parse(body);
 
-    const result = run(
+    const result = await run(
       `INSERT INTO gouges (
         examiner_id, user_id, checkride_type, checkride_date, outcome,
         quality_rating, difficulty_rating, would_recommend, tags,
