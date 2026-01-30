@@ -124,8 +124,7 @@ function MapContent({ examiners }: ExaminerMapProps) {
     <>
       <TileLayer
         attribution='&copy; <a href="https://www.faa.gov/">FAA</a> VFR Sectional Charts'
-        url="https://wms.chartbundle.com/tms/1.0.0/sec/{z}/{x}/{y}.png?type=google"
-        tms={true}
+        url="https://tiles.arcgisonline.com/arcgis/rest/services/Specialty/FAA_Sectional_Charts/MapServer/tile/{z}/{y}/{x}"
       />
       {examiners.map((examiner, index) => {
         const coords = getCoords(examiner.state, index);
